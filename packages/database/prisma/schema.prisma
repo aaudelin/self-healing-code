@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Pipeline {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      PipelineStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  integrations Integration[]
+  runs         PipelineRun[]
+}
+
+enum PipelineStatus {
+  DRAFT
+  CONFIGURED
+}
+
+model Integration {
+  id         String          @id @default(cuid())
+  pipelineId String
+  pipeline   Pipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  role       IntegrationRole
+  provider   String
+  config     Json
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([pipelineId, role])
+}
+
+enum IntegrationRole {
+  LOGS
+  REPOSITORY
+  DATABASE
+  TICKETING
+}
+
+model PipelineRun {
+  id         String    @id @default(cuid())
+  pipelineId String
+  pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  status     RunStatus @default(PENDING)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+
+  steps RunStep[]
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIALLY_FAILED
+  NO_ERRORS
+}
+
+model RunStep {
+  id        String      @id @default(cuid())
+  runId     String
+  run       PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int
+  status    StepStatus  @default(PENDING)
+  startedAt DateTime?
+  endedAt   DateTime?
+  output    Json?
+  error     String?
+
+  @@index([runId, order])
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
