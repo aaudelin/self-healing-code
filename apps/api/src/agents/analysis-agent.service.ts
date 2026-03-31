@@ -1,10 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
 import {
   AnalysisReport,
   LogEntry,
   DatabaseSchema,
   RepositoryContext,
 } from '@aiops/shared';
+import Anthropic from '@anthropic-ai/sdk';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
