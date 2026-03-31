@@ -13,7 +13,6 @@ export class TrpcController {
 
   @All('*')
   async handler(@Req() req: Request, @Res() res: Response) {
-    const path = req.path.replace('/trpc/', '');
 
     const fetchRequest = new globalThis.Request(
       `http://${req.headers.host}${req.originalUrl}`,

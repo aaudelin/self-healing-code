@@ -1,6 +1,6 @@
+import { RepositoryContext, FileChange } from '@aiops/shared';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RepositoryContext, FileChange } from '@aiops/shared';
 
 interface GitHubFile {
   path: string;

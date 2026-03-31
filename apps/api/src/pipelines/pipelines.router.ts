@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { CreatePipelineSchema, UpdatePipelineSchema } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
 import { t } from '../trpc/trpc.service';

@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { RemediationResult, REMEDIATION_CONFIDENCE_THRESHOLD } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 
 import { RemediationAgentService } from '../../agents/remediation-agent.service';
 import { GitHubService } from '../../providers/github.service';

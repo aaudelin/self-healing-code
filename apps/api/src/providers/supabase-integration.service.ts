@@ -1,6 +1,6 @@
+import { DatabaseSchema, TableSchema, ColumnSchema } from '@aiops/shared';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseSchema, TableSchema, ColumnSchema } from '@aiops/shared';
 
 interface SupabaseColumn {
   column_name: string;

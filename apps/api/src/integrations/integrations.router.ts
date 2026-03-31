@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { IntegrationRole } from '@aiops/database';
 import { ConfigureIntegrationSchema, IntegrationRoleSchema } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
 import { t } from '../trpc/trpc.service';

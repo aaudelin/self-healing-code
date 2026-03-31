@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { AnalysisReport } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 
 import { AnalysisAgentService } from '../../agents/analysis-agent.service';
 import { LinearService } from '../../providers/linear.service';

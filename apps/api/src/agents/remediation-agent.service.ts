@@ -1,5 +1,3 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import {
   AnalysisReport,
@@ -8,6 +6,8 @@ import {
   RepositoryContext,
   REMEDIATION_CONFIDENCE_THRESHOLD,
 } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RemediationAgentService {

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { Pipeline, PipelineStatus } from '@aiops/database';
 import { CreatePipelineInput, UpdatePipelineInput } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 

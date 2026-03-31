@@ -1,6 +1,6 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { Integration, IntegrationRole, Prisma } from '@aiops/database';
 import { ConfigureIntegrationInput } from '@aiops/shared';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 
 import { PipelinesService } from '../pipelines/pipelines.service';
 import { PrismaService } from '../prisma/prisma.service';

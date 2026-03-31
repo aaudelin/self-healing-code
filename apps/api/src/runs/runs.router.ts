@@ -1,5 +1,5 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { TriggerRunSchema } from '@aiops/shared';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { z } from 'zod';
 
 import { ExecutionService } from '../execution/execution.service';

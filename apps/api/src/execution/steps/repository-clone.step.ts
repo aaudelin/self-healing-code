@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { RepositoryContext } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 
 import { GitHubService } from '../../providers/github.service';
 import { ExecutionContext } from '../execution.service';

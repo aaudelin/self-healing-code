@@ -1,5 +1,3 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import {
   AnalysisReport,
@@ -7,6 +5,8 @@ import {
   DatabaseSchema,
   RepositoryContext,
 } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AnalysisAgentService {

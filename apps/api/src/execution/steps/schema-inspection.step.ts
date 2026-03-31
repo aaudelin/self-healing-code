@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { DatabaseSchema } from '@aiops/shared';
+import { Injectable } from '@nestjs/common';
 
 import { SupabaseIntegrationService } from '../../providers/supabase-integration.service';
 import { ExecutionContext } from '../execution.service';

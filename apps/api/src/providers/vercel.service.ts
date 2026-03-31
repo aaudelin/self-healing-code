@@ -1,6 +1,6 @@
+import { LogEntry } from '@aiops/shared';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LogEntry } from '@aiops/shared';
 
 interface VercelLog {
   id: string;
