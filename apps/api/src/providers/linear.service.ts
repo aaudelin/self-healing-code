@@ -17,14 +17,16 @@ export class LinearService {
     }
 
     try {
-      const response = await fetch('https://api.linear.app/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this.apiKey,
-        },
-        body: JSON.stringify({
-          query: `
+      const response: globalThis.Response = await fetch(
+        'https://api.linear.app/graphql',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: this.apiKey,
+          },
+          body: JSON.stringify({
+            query: `
             query Team($id: String!) {
               team(id: $id) {
                 id
@@ -32,9 +34,10 @@ export class LinearService {
               }
             }
           `,
-          variables: { id: config.teamId },
-        }),
-      });
+            variables: { id: config.teamId },
+          }),
+        },
+      );
 
       if (!response.ok) {
         return { success: false, message: `Linear API error: ${response.status}` };
@@ -69,14 +72,16 @@ export class LinearService {
     }
 
     try {
-      const response = await fetch('https://api.linear.app/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this.apiKey,
-        },
-        body: JSON.stringify({
-          query: `
+      const response: globalThis.Response = await fetch(
+        'https://api.linear.app/graphql',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: this.apiKey,
+          },
+          body: JSON.stringify({
+            query: `
             mutation CreateIssue($input: IssueCreateInput!) {
               issueCreate(input: $input) {
                 success
@@ -88,16 +93,17 @@ export class LinearService {
               }
             }
           `,
-          variables: {
-            input: {
-              teamId: config.teamId,
-              title,
-              description,
-              ...(config.projectId && { projectId: config.projectId }),
+            variables: {
+              input: {
+                teamId: config.teamId,
+                title,
+                description,
+                ...(config.projectId && { projectId: config.projectId }),
+              },
             },
-          },
-        }),
-      });
+          }),
+        },
+      );
 
       if (!response.ok) {
         return null;
@@ -134,26 +140,29 @@ export class LinearService {
     }
 
     try {
-      const response = await fetch('https://api.linear.app/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this.apiKey,
-        },
-        body: JSON.stringify({
-          query: `
+      const response: globalThis.Response = await fetch(
+        'https://api.linear.app/graphql',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: this.apiKey,
+          },
+          body: JSON.stringify({
+            query: `
             mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) {
               issueUpdate(id: $id, input: $input) {
                 success
               }
             }
           `,
-          variables: {
-            id: issueId,
-            input: update,
-          },
-        }),
-      });
+            variables: {
+              id: issueId,
+              input: update,
+            },
+          }),
+        },
+      );
 
       if (!response.ok) {
         return false;
@@ -175,28 +184,31 @@ export class LinearService {
     }
 
     try {
-      const response = await fetch('https://api.linear.app/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this.apiKey,
-        },
-        body: JSON.stringify({
-          query: `
+      const response: globalThis.Response = await fetch(
+        'https://api.linear.app/graphql',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: this.apiKey,
+          },
+          body: JSON.stringify({
+            query: `
             mutation CreateComment($input: CommentCreateInput!) {
               commentCreate(input: $input) {
                 success
               }
             }
           `,
-          variables: {
-            input: {
-              issueId,
-              body,
+            variables: {
+              input: {
+                issueId,
+                body,
+              },
             },
-          },
-        }),
-      });
+          }),
+        },
+      );
 
       if (!response.ok) {
         return false;

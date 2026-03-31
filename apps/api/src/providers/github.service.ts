@@ -28,7 +28,7 @@ export class GitHubService {
     }
 
     try {
-      const response = await fetch(
+      const response: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}`,
         {
           headers: {
@@ -63,7 +63,7 @@ export class GitHubService {
 
     try {
       const branch = config.branch || 'main';
-      const treeResponse = await fetch(
+      const treeResponse: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/git/trees/${branch}?recursive=1`,
         {
           headers: {
@@ -91,7 +91,7 @@ export class GitHubService {
 
       const files = await Promise.all(
         relevantFiles.map(async (file: GitHubFile) => {
-          const contentResponse = await fetch(
+          const contentResponse: globalThis.Response = await fetch(
             `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${file.path}?ref=${branch}`,
             {
               headers: {
@@ -136,7 +136,7 @@ export class GitHubService {
       const branchName = `fix/aiops-${Date.now()}`;
       const baseBranch = config.branch || 'main';
 
-      const refResponse = await fetch(
+      const refResponse: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/git/refs/heads/${baseBranch}`,
         {
           headers: {
@@ -170,7 +170,7 @@ export class GitHubService {
       );
 
       for (const change of changes) {
-        const existingFileResponse = await fetch(
+        const existingFileResponse: globalThis.Response = await fetch(
           `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${change.path}?ref=${branchName}`,
           {
             headers: {
@@ -203,7 +203,7 @@ export class GitHubService {
         );
       }
 
-      const prResponse = await fetch(
+      const prResponse: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/pulls`,
         {
           method: 'POST',

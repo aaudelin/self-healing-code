@@ -27,7 +27,7 @@ export class VercelService {
     }
 
     try {
-      const response = await fetch(
+      const response: globalThis.Response = await fetch(
         `https://api.vercel.com/v9/projects/${config.projectId}`,
         {
           headers: {
@@ -68,7 +68,7 @@ export class VercelService {
         params.append('teamId', config.teamId);
       }
 
-      const response = await fetch(
+      const response: globalThis.Response = await fetch(
         `https://api.vercel.com/v2/deployments?${params}`,
         {
           headers: {
@@ -88,7 +88,7 @@ export class VercelService {
       const logs: LogEntry[] = [];
 
       for (const deployment of data.deployments?.slice(0, 5) || []) {
-        const logsResponse = await fetch(
+        const logsResponse: globalThis.Response = await fetch(
           `https://api.vercel.com/v2/deployments/${deployment.uid}/events`,
           {
             headers: {
