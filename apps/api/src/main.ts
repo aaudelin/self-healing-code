@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { WsAdapter } from '@nestjs/platform-ws';
 
 import { AppModule } from './app.module';
 
@@ -10,8 +9,6 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,
   });
-
-  app.useWebSocketAdapter(new WsAdapter(app));
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
