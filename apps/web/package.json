@@ -23,6 +23,7 @@
     "@trpc/client": "^10.45.0",
     "@trpc/react-query": "^10.45.0",
     "@trpc/server": "^10.45.0",
+    "@trpc/server": "^10.45.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.312.0",
@@ -34,7 +35,6 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@aiops/api": "workspace:*",
     "@aiops/eslint-config": "workspace:*",
     "@aiops/tsconfig": "workspace:*",
     "@types/node": "^20.11.0",

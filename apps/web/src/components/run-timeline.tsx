@@ -2,8 +2,8 @@
 
 import { CheckCircle2, Circle, Loader2, XCircle, SkipForward } from 'lucide-react';
 
-import { cn, formatDuration } from '@/lib/utils';
 import type { RunStep, StepStatus } from '@/lib/trpc/types';
+import { cn, formatDuration } from '@/lib/utils';
 
 interface RunTimelineProps {
   steps: RunStep[];

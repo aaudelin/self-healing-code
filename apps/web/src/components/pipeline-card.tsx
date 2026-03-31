@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { Play, Settings, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,9 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { StatusBadge } from '@/components/status-badge';
-import { formatDate } from '@/lib/utils';
 import type { Pipeline, PipelineRun } from '@/lib/trpc/types';
+import { formatDate } from '@/lib/utils';
 
 interface PipelineCardProps {
   pipeline: Pipeline & { runs?: PipelineRun[] };

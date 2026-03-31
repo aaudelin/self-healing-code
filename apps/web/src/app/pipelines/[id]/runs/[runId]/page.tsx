@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
 
+import { RunTimeline } from '@/components/run-timeline';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,8 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { StatusBadge } from '@/components/status-badge';
-import { RunTimeline } from '@/components/run-timeline';
 import { trpc } from '@/lib/trpc/client';
 import { formatDate, formatDuration } from '@/lib/utils';
 

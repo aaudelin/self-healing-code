@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { PROVIDER_OPTIONS, INTEGRATION_ROLE_LABELS } from '@aiops/shared';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

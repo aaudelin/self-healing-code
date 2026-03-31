@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { INTEGRATION_ROLE_LABELS } from '@aiops/shared';
+import { ArrowLeft, Play, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Play, Settings } from 'lucide-react';
+import { useState } from 'react';
 
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,12 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { StatusBadge } from '@/components/status-badge';
 import { useToast } from '@/components/ui/use-toast';
 import { trpc } from '@/lib/trpc/client';
-import { formatDate } from '@/lib/utils';
 import type { IntegrationRole } from '@/lib/trpc/types';
-import { INTEGRATION_ROLE_LABELS } from '@aiops/shared';
+import { formatDate } from '@/lib/utils';
 
 export default function PipelineDetailPage() {
   const params = useParams();
