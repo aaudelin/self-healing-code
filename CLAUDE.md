@@ -82,6 +82,6 @@ e2e/         # Playwright tests
 ## Environment Variables
 
 Required in `.env` (see `.env.example`):
-- `DATABASE_URL`, `DIRECT_URL` - PostgreSQL connection
+- `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` - PostgreSQL connection
 - `ANTHROPIC_API_KEY` - Claude API
 - `VERCEL_TOKEN`, `GITHUB_TOKEN`, `SUPABASE_*`, `LINEAR_API_KEY` - Provider credentials
