@@ -19,7 +19,7 @@ export class TrpcController {
       `http://${req.headers.host}${req.originalUrl}`,
       {
         method: req.method,
-        headers: req.headers as HeadersInit,
+        headers: req.headers as Record<string, string>,
         body:
           req.method !== 'GET' && req.method !== 'HEAD'
             ? JSON.stringify(req.body)

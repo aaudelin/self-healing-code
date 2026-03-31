@@ -40,7 +40,9 @@ export class LinearService {
         return { success: false, message: `Linear API error: ${response.status}` };
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        errors?: Array<{ message: string }>;
+      };
       if (data.errors) {
         return { success: false, message: data.errors[0]?.message || 'API error' };
       }
@@ -101,7 +103,14 @@ export class LinearService {
         return null;
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        data?: {
+          issueCreate?: {
+            success: boolean;
+            issue: { id: string; url: string };
+          };
+        };
+      };
       if (data.data?.issueCreate?.success) {
         return {
           id: data.data.issueCreate.issue.id,
@@ -150,7 +159,9 @@ export class LinearService {
         return false;
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        data?: { issueUpdate?: { success: boolean } };
+      };
       return data.data?.issueUpdate?.success ?? false;
     } catch (error) {
       console.error('Error updating Linear issue:', error);
@@ -191,7 +202,9 @@ export class LinearService {
         return false;
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        data?: { commentCreate?: { success: boolean } };
+      };
       return data.data?.commentCreate?.success ?? false;
     } catch (error) {
       console.error('Error adding Linear comment:', error);

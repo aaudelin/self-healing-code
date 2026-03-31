@@ -1,5 +1,5 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
-import { Integration, IntegrationRole } from '@aiops/database';
+import { Integration, IntegrationRole, Prisma } from '@aiops/database';
 import { ConfigureIntegrationInput } from '@aiops/shared';
 
 import { PipelinesService } from '../pipelines/pipelines.service';
@@ -40,11 +40,11 @@ export class IntegrationsService {
         pipelineId: data.pipelineId,
         role: data.role as IntegrationRole,
         provider: data.provider,
-        config: data.config,
+        config: data.config as Prisma.InputJsonValue,
       },
       update: {
         provider: data.provider,
-        config: data.config,
+        config: data.config as Prisma.InputJsonValue,
       },
     });
 

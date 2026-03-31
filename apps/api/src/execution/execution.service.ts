@@ -122,8 +122,8 @@ export class ExecutionService {
         return;
       }
       context.analysis = analysisResult.data;
-      context.ticketId = analysisResult.extra?.ticketId;
-      context.ticketUrl = analysisResult.extra?.ticketUrl;
+      context.ticketId = analysisResult.extra?.ticketId as string | undefined;
+      context.ticketUrl = analysisResult.extra?.ticketUrl as string | undefined;
 
       // Step 4: Remediation
       const remediationResult = await this.executeStep(context, 4, async () => {

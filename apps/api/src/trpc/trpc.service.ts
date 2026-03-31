@@ -23,5 +23,3 @@ export class TrpcService {
     });
   }
 }
-
-export type AppRouter = ReturnType<TrpcService['appRouter']>;

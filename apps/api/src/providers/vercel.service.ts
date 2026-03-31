@@ -82,7 +82,9 @@ export class VercelService {
         return this.getMockLogs();
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        deployments?: Array<{ uid: string }>;
+      };
       const logs: LogEntry[] = [];
 
       for (const deployment of data.deployments?.slice(0, 5) || []) {

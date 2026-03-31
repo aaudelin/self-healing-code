@@ -2,6 +2,10 @@
   "extends": "@aiops/tsconfig/nestjs.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@/*": ["src/*"]
     }

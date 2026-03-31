@@ -77,8 +77,8 @@ export class GitHubService {
         return this.getMockRepository();
       }
 
-      const treeData = await treeResponse.json();
-      const relevantFiles = (treeData.tree as GitHubFile[])
+      const treeData = (await treeResponse.json()) as { tree: GitHubFile[] };
+      const relevantFiles = treeData.tree
         .filter(
           (item: GitHubFile) =>
             item.type === 'blob' &&
@@ -150,7 +150,7 @@ export class GitHubService {
         return null;
       }
 
-      const refData = await refResponse.json();
+      const refData = (await refResponse.json()) as { object: { sha: string } };
       const baseSha = refData.object.sha;
 
       await fetch(
@@ -181,7 +181,7 @@ export class GitHubService {
         );
 
         const existingFile = existingFileResponse.ok
-          ? await existingFileResponse.json()
+          ? ((await existingFileResponse.json()) as { sha: string })
           : null;
 
         await fetch(
@@ -222,7 +222,7 @@ export class GitHubService {
       );
 
       if (prResponse.ok) {
-        const prData = await prResponse.json();
+        const prData = (await prResponse.json()) as { html_url: string };
         return { url: prData.html_url };
       }
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PipelineRun, RunStatus, StepStatus } from '@aiops/database';
+import { PipelineRun, RunStatus, StepStatus, Prisma } from '@aiops/database';
 import { STEP_ORDER, STEP_NAMES } from '@aiops/shared';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -99,7 +99,7 @@ export class RunsService {
         status === StepStatus.SKIPPED
           ? { endedAt: new Date() }
           : {}),
-        ...(output ? { output } : {}),
+        ...(output ? { output: output as Prisma.InputJsonValue } : {}),
         ...(error ? { error } : {}),
       },
     });
