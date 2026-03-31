@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm db:deploy && pnpm build"
+  "buildCommand": "echo $POSTGRES_URL_NON_POOLING | head -c 20 && pnpm db:deploy && pnpm build"
 }
