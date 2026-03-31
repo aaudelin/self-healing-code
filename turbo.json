@@ -31,7 +31,8 @@
       "cache": false
     },
     "db:deploy": {
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["POSTGRES_PRISMA_URL", "POSTGRES_URL_NON_POOLING"]
     },
     "clean": {
       "cache": false
