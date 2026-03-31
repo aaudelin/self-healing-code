@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nestjs",
+  "outputDirectory": "apps/api/dist",
   "installCommand": "cd ../.. && pnpm install",
   "buildCommand": "cd ../.. && pnpm -F @aiops/api... build && pnpm -F @aiops/database db:deploy"
 }
