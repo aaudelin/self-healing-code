@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { PipelinesModule } from '../pipelines/pipelines.module';
@@ -8,7 +8,7 @@ import { TrpcController } from './trpc.controller';
 import { TrpcService } from './trpc.service';
 
 @Module({
-  imports: [PipelinesModule, IntegrationsModule, RunsModule],
+  imports: [PipelinesModule, IntegrationsModule, forwardRef(() => RunsModule)],
   controllers: [TrpcController],
   providers: [TrpcService],
   exports: [TrpcService],

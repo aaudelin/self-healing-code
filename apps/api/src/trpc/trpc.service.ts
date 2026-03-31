@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { initTRPC } from '@trpc/server';
 
 import { IntegrationsRouter } from '../integrations/integrations.router';
@@ -12,6 +12,7 @@ export class TrpcService {
   constructor(
     private readonly pipelinesRouter: PipelinesRouter,
     private readonly integrationsRouter: IntegrationsRouter,
+    @Inject(forwardRef(() => RunsRouter))
     private readonly runsRouter: RunsRouter,
   ) {}
 
