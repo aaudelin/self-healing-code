@@ -2,6 +2,11 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalPassThroughEnv": [
+    "CORS_ORIGIN",
+    "GITHUB_TOKEN",
+    "LINEAR_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "NEXT_PUBLIC_API_URL",
     "POSTGRES_URL",
     "POSTGRES_PRISMA_URL",
     "POSTGRES_URL_NON_POOLING",
@@ -14,7 +19,9 @@
     "SUPABASE_SERVICE_ROLE_KEY",
     "SUPABASE_JWT_SECRET",
     "SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_SECRET_KEY"
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_SERVICE_KEY",
+    "VERCEL_TOKEN"
   ],
   "tasks": {
     "build": {
