@@ -34,7 +34,7 @@ export class SupabaseIntegrationService {
     }
 
     try {
-      const response = await fetch(`${this.url}/rest/v1/`, {
+      const response: globalThis.Response = await fetch(`${this.url}/rest/v1/`, {
         headers: {
           apikey: this.serviceKey,
           Authorization: `Bearer ${this.serviceKey}`,
@@ -63,7 +63,7 @@ export class SupabaseIntegrationService {
     }
 
     try {
-      const tablesResponse = await fetch(
+      const tablesResponse: globalThis.Response = await fetch(
         `${this.url}/rest/v1/?apikey=${this.serviceKey}`,
         {
           headers: {
@@ -77,15 +77,18 @@ export class SupabaseIntegrationService {
         return this.getMockSchema();
       }
 
-      const rpcResponse = await fetch(`${this.url}/rest/v1/rpc/get_tables`, {
-        method: 'POST',
-        headers: {
-          apikey: this.serviceKey,
-          Authorization: `Bearer ${this.serviceKey}`,
-          'Content-Type': 'application/json',
+      const rpcResponse: globalThis.Response = await fetch(
+        `${this.url}/rest/v1/rpc/get_tables`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: this.serviceKey,
+            Authorization: `Bearer ${this.serviceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
 
       if (!rpcResponse.ok) {
         return this.getMockSchema();
@@ -95,7 +98,7 @@ export class SupabaseIntegrationService {
       const tables: TableSchema[] = [];
 
       for (const table of tablesData) {
-        const columnsResponse = await fetch(
+        const columnsResponse: globalThis.Response = await fetch(
           `${this.url}/rest/v1/rpc/get_columns`,
           {
             method: 'POST',
