@@ -35,7 +35,10 @@ export class TrpcController {
 
     res.status(response.status);
     response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
+      // Don't overwrite CORS headers set by NestJS middleware
+      if (!key.toLowerCase().startsWith('access-control-')) {
+        res.setHeader(key, value);
+      }
     });
 
     const body = await response.text();
