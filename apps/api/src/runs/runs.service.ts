@@ -117,4 +117,17 @@ export class RunsService {
       },
     });
   }
+
+  async updateRunUrls(
+    runId: string,
+    urls: { ticketUrl?: string; pullRequestUrl?: string },
+  ): Promise<void> {
+    await this.prisma.pipelineRun.update({
+      where: { id: runId },
+      data: {
+        ...(urls.ticketUrl && { ticketUrl: urls.ticketUrl }),
+        ...(urls.pullRequestUrl && { pullRequestUrl: urls.pullRequestUrl }),
+      },
+    });
+  }
 }

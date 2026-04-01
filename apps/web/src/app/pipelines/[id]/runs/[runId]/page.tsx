@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ExternalLink, GitPullRequest, RefreshCw, Ticket } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect } from 'react';
@@ -85,6 +85,45 @@ export default function RunDetailPage() {
           Refresh
         </Button>
       </div>
+
+      {(run.ticketUrl || run.pullRequestUrl) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Generated Artifacts</CardTitle>
+            <CardDescription>
+              Links to resources created during this pipeline run
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              {run.ticketUrl && (
+                <a
+                  href={run.ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                >
+                  <Ticket className="h-4 w-4" />
+                  View Linear Ticket
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {run.pullRequestUrl && (
+                <a
+                  href={run.pullRequestUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 transition-colors"
+                >
+                  <GitPullRequest className="h-4 w-4" />
+                  View Pull Request
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

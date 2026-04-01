@@ -11,7 +11,7 @@ An AI-powered platform that automatically detects and fixes application errors. 
 pnpm install
 
 # 2. Start PostgreSQL
-docker-compose up -d
+docker compose up -d
 
 # 3. Configure environment
 cp .env.example .env

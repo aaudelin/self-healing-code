@@ -1,5 +1,5 @@
 import { RemediationResult, REMEDIATION_CONFIDENCE_THRESHOLD } from '@aiops/shared';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { RemediationAgentService } from '../../agents/remediation-agent.service';
 import { GitHubService } from '../../providers/github.service';
@@ -7,6 +7,8 @@ import { ExecutionContext } from '../execution.service';
 
 @Injectable()
 export class RemediationStep {
+  private readonly logger = new Logger(RemediationStep.name);
+
   constructor(
     private readonly remediationAgent: RemediationAgentService,
     private readonly githubService: GitHubService,
@@ -17,7 +19,12 @@ export class RemediationStep {
     data?: RemediationResult;
     error?: string;
   }> {
+    this.logger.log(`[Run ${context.runId}] Starting remediation step`);
+
     if (!context.analysis || !context.repository) {
+      this.logger.error(
+        `[Run ${context.runId}] Missing required context - analysis: ${!!context.analysis}, repository: ${!!context.repository}`,
+      );
       return {
         success: false,
         error: 'Missing required context (analysis or repository)',
@@ -25,12 +32,17 @@ export class RemediationStep {
     }
 
     try {
+      this.logger.log(`[Run ${context.runId}] Calling remediation agent`);
       const remediation = await this.remediationAgent.remediate(
         context.analysis,
         context.repository,
       );
+      this.logger.log(
+        `[Run ${context.runId}] Remediation agent completed - Applied: ${remediation.applied}, Changes: ${remediation.changes.length}`,
+      );
 
       if (!remediation.applied) {
+        this.logger.log(`[Run ${context.runId}] Remediation not applied, skipping PR creation`);
         return {
           success: true,
           data: remediation,
@@ -38,11 +50,22 @@ export class RemediationStep {
       }
 
       // Create PR if confidence is high enough
+      this.logger.log(
+        `[Run ${context.runId}] Confidence: ${context.analysis.confidence}, Threshold: ${REMEDIATION_CONFIDENCE_THRESHOLD}`,
+      );
+
       if (context.analysis.confidence >= REMEDIATION_CONFIDENCE_THRESHOLD) {
         const integration = context.integrations.get('REPOSITORY');
+        this.logger.log(`[Run ${context.runId}] REPOSITORY integration found: ${!!integration}`);
+
         if (integration && remediation.changes.length > 0) {
+          const config = integration.config as Record<string, string>;
+          this.logger.log(
+            `[Run ${context.runId}] Creating PR with ${remediation.changes.length} changes for repo: ${config.owner}/${config.repo}`,
+          );
+
           const pr = await this.githubService.createPullRequest(
-            integration.config as Record<string, string>,
+            config,
             remediation.changes,
             `[AIOps] Fix: ${context.analysis.summary}`,
             `## Automated Fix
@@ -68,8 +91,19 @@ ${context.ticketUrl ? `### Related Ticket\n${context.ticketUrl}` : ''}
 
           if (pr) {
             remediation.pullRequestUrl = pr.url;
+            this.logger.log(`[Run ${context.runId}] PR created successfully: ${pr.url}`);
+          } else {
+            this.logger.warn(`[Run ${context.runId}] PR creation returned null - check GitHub service logs`);
           }
+        } else {
+          this.logger.warn(
+            `[Run ${context.runId}] Skipping PR creation - integration: ${!!integration}, changes: ${remediation.changes.length}`,
+          );
         }
+      } else {
+        this.logger.log(
+          `[Run ${context.runId}] Confidence below threshold, skipping PR creation`,
+        );
       }
 
       return {
@@ -77,6 +111,10 @@ ${context.ticketUrl ? `### Related Ticket\n${context.ticketUrl}` : ''}
         data: remediation,
       };
     } catch (error) {
+      this.logger.error(
+        `[Run ${context.runId}] Remediation step failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Remediation failed',

@@ -46,12 +46,14 @@ enum IntegrationRole {
 }
 
 model PipelineRun {
-  id         String    @id @default(cuid())
-  pipelineId String
-  pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  status     RunStatus @default(PENDING)
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
+  id             String    @id @default(cuid())
+  pipelineId     String
+  pipeline       Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  status         RunStatus @default(PENDING)
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  ticketUrl      String?
+  pullRequestUrl String?
 
   steps RunStep[]
 }

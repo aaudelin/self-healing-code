@@ -115,6 +115,8 @@ export type PipelineRun = {
   status: RunStatus;
   startedAt: string;
   endedAt: string | null;
+  ticketUrl: string | null;
+  pullRequestUrl: string | null;
   steps?: RunStep[];
 };
 

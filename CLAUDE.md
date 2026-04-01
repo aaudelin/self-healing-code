@@ -31,7 +31,7 @@ pnpm --filter @aiops/api dev   # API only
 pnpm --filter @aiops/web dev   # Web only
 
 # Local database
-docker-compose up         # PostgreSQL on :5432
+docker compose up         # PostgreSQL on :5432
 ```
 
 ## Architecture

@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LinearService {
+  private readonly logger = new Logger(LinearService.name);
   private readonly apiKey: string | undefined;
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('LINEAR_API_KEY');
+    this.logger.log(
+      `LinearService initialized - API key configured: ${!!this.apiKey}`,
+    );
   }
 
   async testConnection(
@@ -17,6 +21,7 @@ export class LinearService {
     }
 
     try {
+
       const response: globalThis.Response = await fetch(
         'https://api.linear.app/graphql',
         {
@@ -44,6 +49,7 @@ export class LinearService {
       }
 
       const data = (await response.json()) as {
+        data?: { team?: { id: string; name: string } };
         errors?: Array<{ message: string }>;
       };
       if (data.errors) {
@@ -64,7 +70,11 @@ export class LinearService {
     title: string,
     description: string,
   ): Promise<{ id: string; url: string } | null> {
+    this.logger.log(`Creating Linear issue: "${title.substring(0, 50)}..."`);
+    this.logger.debug(`Config: teamId=${config.teamId}, projectId=${config.projectId || 'none'}`);
+
     if (!this.apiKey) {
+      this.logger.warn('No LINEAR_API_KEY configured, returning mock issue');
       return {
         id: 'mock-issue-id',
         url: 'https://linear.app/mock/issue/MOCK-1',
@@ -72,6 +82,8 @@ export class LinearService {
     }
 
     try {
+
+      this.logger.log('Sending GraphQL request to Linear API...');
       const response: globalThis.Response = await fetch(
         'https://api.linear.app/graphql',
         {
@@ -105,7 +117,11 @@ export class LinearService {
         },
       );
 
+      this.logger.log(`Linear API response status: ${response.status}`);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Linear API error: ${response.status} - ${errorText}`);
         return null;
       }
 
@@ -116,17 +132,31 @@ export class LinearService {
             issue: { id: string; url: string };
           };
         };
+        errors?: Array<{ message: string }>;
       };
+
+      if (data.errors) {
+        this.logger.error(`Linear GraphQL errors: ${JSON.stringify(data.errors)}`);
+        return null;
+      }
+
       if (data.data?.issueCreate?.success) {
+        this.logger.log(
+          `Linear issue created successfully: ${data.data.issueCreate.issue.id} - ${data.data.issueCreate.issue.url}`,
+        );
         return {
           id: data.data.issueCreate.issue.id,
           url: data.data.issueCreate.issue.url,
         };
       }
 
+      this.logger.warn(`Linear issueCreate returned success=false or no data: ${JSON.stringify(data)}`);
       return null;
     } catch (error) {
-      console.error('Error creating Linear issue:', error);
+      this.logger.error(
+        `Error creating Linear issue: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       return null;
     }
   }

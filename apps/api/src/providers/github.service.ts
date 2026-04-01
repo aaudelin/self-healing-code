@@ -1,5 +1,5 @@
 import { RepositoryContext, FileChange } from '@aiops/shared';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface GitHubFile {
@@ -14,10 +14,12 @@ interface GitHubContent {
 
 @Injectable()
 export class GitHubService {
+  private readonly logger = new Logger(GitHubService.name);
   private readonly token: string | undefined;
 
   constructor(private readonly configService: ConfigService) {
     this.token = this.configService.get<string>('GITHUB_TOKEN');
+    this.logger.log(`GitHubService initialized - Token configured: ${!!this.token}`);
   }
 
   async testConnection(
@@ -128,7 +130,11 @@ export class GitHubService {
     title: string,
     body: string,
   ): Promise<{ url: string } | null> {
+    this.logger.log(`Creating PR: "${title.substring(0, 50)}..." with ${changes.length} changes`);
+    this.logger.debug(`Config: owner=${config.owner}, repo=${config.repo}, branch=${config.branch || 'main'}`);
+
     if (!this.token) {
+      this.logger.warn('No GITHUB_TOKEN configured, returning mock PR');
       return { url: 'https://github.com/mock/repo/pull/1' };
     }
 
@@ -136,6 +142,7 @@ export class GitHubService {
       const branchName = `fix/aiops-${Date.now()}`;
       const baseBranch = config.branch || 'main';
 
+      this.logger.log(`Getting base branch ref: ${baseBranch}`);
       const refResponse: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/git/refs/heads/${baseBranch}`,
         {
@@ -147,13 +154,17 @@ export class GitHubService {
       );
 
       if (!refResponse.ok) {
+        const errorText = await refResponse.text();
+        this.logger.error(`Failed to get base branch ref: ${refResponse.status} - ${errorText}`);
         return null;
       }
 
       const refData = (await refResponse.json()) as { object: { sha: string } };
       const baseSha = refData.object.sha;
+      this.logger.log(`Base SHA: ${baseSha}`);
 
-      await fetch(
+      this.logger.log(`Creating branch: ${branchName}`);
+      const createBranchResponse = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/git/refs`,
         {
           method: 'POST',
@@ -169,7 +180,15 @@ export class GitHubService {
         },
       );
 
+      if (!createBranchResponse.ok) {
+        const errorText = await createBranchResponse.text();
+        this.logger.error(`Failed to create branch: ${createBranchResponse.status} - ${errorText}`);
+        return null;
+      }
+      this.logger.log(`Branch created successfully`);
+
       for (const change of changes) {
+        this.logger.log(`Applying change to: ${change.path}`);
         const existingFileResponse: globalThis.Response = await fetch(
           `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${change.path}?ref=${branchName}`,
           {
@@ -184,7 +203,7 @@ export class GitHubService {
           ? ((await existingFileResponse.json()) as { sha: string })
           : null;
 
-        await fetch(
+        const updateResponse = await fetch(
           `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${change.path}`,
           {
             method: 'PUT',
@@ -201,8 +220,16 @@ export class GitHubService {
             }),
           },
         );
+
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          this.logger.error(`Failed to update file ${change.path}: ${updateResponse.status} - ${errorText}`);
+        } else {
+          this.logger.log(`File ${change.path} updated successfully`);
+        }
       }
 
+      this.logger.log(`Creating pull request from ${branchName} to ${baseBranch}`);
       const prResponse: globalThis.Response = await fetch(
         `https://api.github.com/repos/${config.owner}/${config.repo}/pulls`,
         {
@@ -223,12 +250,18 @@ export class GitHubService {
 
       if (prResponse.ok) {
         const prData = (await prResponse.json()) as { html_url: string };
+        this.logger.log(`PR created successfully: ${prData.html_url}`);
         return { url: prData.html_url };
       }
 
+      const errorText = await prResponse.text();
+      this.logger.error(`Failed to create PR: ${prResponse.status} - ${errorText}`);
       return null;
     } catch (error) {
-      console.error('Error creating GitHub PR:', error);
+      this.logger.error(
+        `Error creating GitHub PR: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       return null;
     }
   }
