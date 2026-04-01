@@ -37,7 +37,7 @@ export function RunTimeline({ steps }: RunTimelineProps) {
               />
             )}
           </div>
-          <div className="flex-1 pb-4">
+          <div className="flex-1 min-w-0 pb-4">
             <div className="flex items-center justify-between">
               <h4 className="font-medium">{step.name}</h4>
               {step.startedAt && (
