@@ -21,6 +21,8 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  apps/agents: {}
+
   apps/api:
     dependencies:
       '@aiops/database':

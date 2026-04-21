@@ -21,12 +21,17 @@
     "SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SECRET_KEY",
     "SUPABASE_SERVICE_KEY",
-    "VERCEL_TOKEN"
+    "VERCEL_TOKEN",
+    "LANGCHAIN_TRACING_V2",
+    "LANGCHAIN_API_KEY",
+    "LANGCHAIN_PROJECT",
+    "LANGCHAIN_ENDPOINT"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.py", "pyproject.toml", "uv.lock"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".venv/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -34,10 +39,13 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.py", "tests/**/*.py", "pyproject.toml"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.py", "tests/**/*.py", "pyproject.toml", "uv.lock"],
+      "outputs": [".pytest_cache/**"]
     },
     "test:e2e": {
       "dependsOn": ["^build"],

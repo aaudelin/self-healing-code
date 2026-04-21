@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aiops/web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aiops/api", "dev"],
+      "port": 4000
+    },
+    {
+      "name": "agents",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aiops/agents", "dev"],
+      "port": 4100
+    },
+    {
+      "name": "all",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    }
+  ]
+}
