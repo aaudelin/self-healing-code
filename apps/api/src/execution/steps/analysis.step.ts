@@ -1,7 +1,7 @@
 import { AnalysisReport } from '@aiops/shared';
 import { Injectable, Logger } from '@nestjs/common';
 
-import { AnalysisAgentService } from '../../agents/analysis-agent.service';
+import { AnalysisAgentRemoteService } from '../../agents/analysis-agent-remote.service';
 import { LinearService } from '../../providers/linear.service';
 import { ExecutionContext } from '../execution.service';
 
@@ -10,7 +10,7 @@ export class AnalysisStep {
   private readonly logger = new Logger(AnalysisStep.name);
 
   constructor(
-    private readonly analysisAgent: AnalysisAgentService,
+    private readonly analysisAgent: AnalysisAgentRemoteService,
     private readonly linearService: LinearService,
   ) {}
 
