@@ -1,321 +1,430 @@
-# AIOps Self-Healing Pipeline — MVP Functional Specification
-
-## Overview
-
-This document describes the functional specification for the MVP of an AIOps self-healing pipeline platform. The product allows users to configure and manually trigger automated incident detection and remediation pipelines. It connects to external services (logs, code repositories, databases, ticketing, documentation) and orchestrates a sequence of AI agents to analyze, document, and fix detected errors.
-
-The MVP is intentionally scoped: no authentication, no scheduled runs, no multi-tenant isolation. The goal is to demonstrate a working end-to-end self-healing pipeline that can later be extended into a production-grade product.
-
----
-
-## Core Concepts
-
-### Pipeline
-
-A pipeline is the central entity of the product. It represents a configured, reusable workflow that connects a set of external services and, when triggered, executes a sequence of steps to detect, analyze, and remediate application errors.
-
-Each pipeline belongs to a single project context and is configured once, then run on demand.
-
-### Pipeline Run
-
-A pipeline run is a single execution of a pipeline. Each run is recorded with its status, start time, end time, and a structured log of all steps. Runs are immutable once completed.
-
-### Step
-
-A run is composed of sequential steps. Each step represents a discrete unit of work (e.g., fetching logs, cloning the repository, running an agent). Steps have a status (pending, running, success, failed, skipped) and produce structured output that is passed to subsequent steps.
-
----
-
-## Features
-
-### 1. Pipeline Management
-
-#### 1.1 Create a Pipeline
-
-The user can create a new pipeline by providing:
-
-- **Name**: a human-readable label for the pipeline.
-- **Description** *(optional)*: a short summary of what this pipeline monitors and repairs.
-
-Once created, the pipeline is in a draft state until all required integrations are configured.
-
-#### 1.2 Configure Pipeline Integrations
-
-After creation, the user configures the external services the pipeline will use. Each integration is configured independently. For the MVP, the available integration types are fixed:
-
-| Integration Role | MVP Provider |
-|---|---|
-| Log source | Vercel |
-| Code repository | GitHub |
-| Database | Supabase |
-| Ticketing | Linear |
-
-Each integration requires the user to provide credentials or tokens specific to that provider, as well as provider-specific targeting parameters (e.g., which Vercel project, which GitHub repository, which Linear team).
-
-All credentials are stored at the pipeline level and are not shared across pipelines.
-
-#### 1.3 Pipeline List View
-
-The user can view all created pipelines on a dashboard. For each pipeline, the list shows:
-
-- Pipeline name and description
-- Configuration status (whether all required integrations are configured)
-- Last run status and timestamp (or "Never run" if no run exists)
-- A shortcut to trigger a new run
-
-#### 1.4 Pipeline Detail View
-
-The user can open a pipeline to view its full detail, including:
-
-- All configured integrations and their current status
-- The history of all past runs, sorted by most recent first
-- Each run's summary status, timestamps, and a link to the run detail
-
-#### 1.5 Edit a Pipeline
-
-The user can edit the name, description, and integration configuration of an existing pipeline at any time, as long as no run is currently in progress.
-
-#### 1.6 Delete a Pipeline
-
-The user can delete a pipeline. Deleting a pipeline also deletes all associated run history.
-
----
-
-### 2. Pipeline Execution
-
-#### 2.1 Manual Trigger
-
-The user triggers a pipeline run manually from either the pipeline list or the pipeline detail view. There are no scheduled or event-driven triggers in the MVP.
-
-Upon triggering, a new run is created immediately and the user is redirected to the run detail view, where they can follow the execution in real time.
-
-#### 2.2 Run Detail View
-
-The run detail view shows:
-
-- Overall run status (running, success, failed, partially failed)
-- Start time, end time, total duration
-- A step-by-step breakdown of the execution, each showing:
-    - Step name
-    - Status
-    - Duration
-    - Structured output or error message
-
-The view updates in real time while the run is in progress.
-
-#### 2.3 Execution Steps
-
-A pipeline run executes the following steps in order. If any step fails, the run is marked as failed and subsequent steps are skipped, unless otherwise noted.
-
----
-
-##### Step 1 — Log Ingestion (Vercel)
-
-The system connects to the Vercel API using the credentials provided in the pipeline configuration and retrieves recent runtime logs for the configured project and environment.
-
-The system filters logs to identify error-level entries. If no errors are found, the run is marked as completed with a "no errors detected" status, and subsequent steps are skipped.
-
-If errors are found, they are collected and passed to the next step.
-
-**Output**: A structured list of error events, each containing the error message, timestamp, and any available stack trace or contextual metadata from Vercel.
-
----
-
-##### Step 2 — Repository Clone (GitHub)
-
-The system clones the configured GitHub repository to a temporary local workspace. The clone targets the default branch unless otherwise specified in the pipeline configuration.
-
-The workspace is isolated per run and cleaned up after the run completes.
-
-**Output**: A local copy of the codebase, ready for analysis and modification.
-
----
-
-##### Step 3 — Database Schema Inspection (Supabase)
-
-The system connects to the configured Supabase project and retrieves the database schema: the list of tables, their columns, types, constraints, and relationships. This context is passed to the analysis agent to allow it to reason about database-related errors.
-
-**Output**: A structured representation of the database schema.
-
----
-
-##### Step 4 — Analysis Agent (Linear)
-
-An AI agent receives the following inputs:
-- The error events collected in Step 1
-- The codebase (file tree and relevant files identified from stack traces)
-- The database schema from Step 3
-
-The agent performs a root cause analysis and produces a structured report containing:
-- A summary of each detected error
-- The identified root cause(s)
-- The files and lines of code involved
-- The database tables or queries involved, if applicable
-- A proposed remediation strategy
-- A confidence level (high / medium / low) for the proposed fix
-
-The agent then creates a ticket in the configured Linear team with this report as the ticket description. The ticket is tagged with a label that identifies it as AI-generated.
-
-**Output**: The analysis report and the URL of the created Linear ticket.
-
----
-
-##### Step 5 — Remediation Agent (GitHub)
-
-A second AI agent receives:
-- The analysis report from Step 4
-- The local codebase from Step 2
-
-The agent evaluates whether the proposed fix is safe to implement automatically, based on the confidence level and the nature of the change. If the confidence level is low or the change is too broad (e.g., affects more than a configurable threshold of files), the agent skips implementation and logs its reasoning.
-
-If implementation proceeds, the agent:
-1. Creates a new branch in the local repository. The branch name is derived from the Linear ticket identifier created in Step 4.
-2. Applies the code changes.
-3. Commits the changes with a structured commit message referencing the ticket.
-4. Pushes the branch to the remote GitHub repository.
-5. Opens a pull request on GitHub targeting the default branch. The PR description includes a summary of the changes and a reference to the Linear ticket.
-
-**Output**: The URL of the created GitHub pull request, or a skip reason if no implementation was performed.
-
----
-
-##### Step 6 — Ticket Update (Linear)
-
-The system updates the Linear ticket created in Step 4 with:
-- The URL of the GitHub pull request (if one was created)
-- A status update reflecting the outcome of the remediation step
-- The overall run status
-
-**Output**: Confirmation of the ticket update.
-
----
-
-### 3. Run History
-
-The user can browse the full history of runs for any pipeline. Runs are displayed in reverse chronological order with their status, duration, and a link to the run detail view.
-
-Old runs are retained indefinitely in the MVP (no purge policy).
-
----
-
-### 4. Settings
-
-A global settings page allows the user to view and update application-level configuration. In the MVP, this is limited to managing default values or global API keys that apply across pipelines (if applicable).
-
----
-
-## Data Model (Functional Description)
-
-### Pipeline
-
-Stores all information about a configured pipeline, including its name, description, integration credentials, and metadata such as creation date and last modified date.
-
-### Pipeline Integration
-
-Each pipeline has a set of associated integrations, one per role (logs, repository, database, ticketing). Each integration stores the provider type, the credentials, and the provider-specific targeting parameters.
-
-### Pipeline Run
-
-Each run is associated with a pipeline and stores the overall status, start time, end time, and a reference to the ordered list of steps.
-
-### Run Step
-
-Each step is associated with a run and stores the step name, order index, status, start time, end time, and structured output (as a JSON blob). Error messages are stored inline when a step fails.
-
----
-
-## UI Structure
+# Spec MVP — Self-Healing Software Agent
+
+## 1. Contexte et objectif
+
+On construit un MVP local d'un système d'agents Claude qui prend en entrée un incident logiciel (bug) et automatise le cycle complet : compréhension, reproduction, correctif, tests, PR draft, rapport.
+
+Stack cible des projets clients : **TypeScript / Next.js / Nest.js dans un monorepo turborepo**.
+
+L'objectif du MVP est de valider la faisabilité technique et l'ergonomie utilisateur, pas la scalabilité ni le multi-tenant. Tout tourne en local.
+
+## 2. Contraintes techniques
+
+- **Exécution** : 100% locale sur la machine du dev
+- **Langage** : Python 3.11+
+- **Orchestration IA** : Claude Agent SDK (Python) en mode `ClaudeSDKClient` session persistante par incident
+- **Authentification Anthropic** : clé API (`ANTHROPIC_API_KEY` via fichier `.env`)
+- **Modèles** : choisis par agent en fonction de la complexité (cf. section 6)
+- **Persistance** : SQLite (fichier local)
+- **UI** : web légère, Streamlit ou FastAPI + petit front (au choix de l'implémenteur, voir section 9)
+- **Containerisation cible** : Docker engine local pour les envs de repro (pas l'app elle-même)
+- **Sandbox de l'agent** : `@anthropic-ai/sandbox-runtime` activé pour confiner l'agent à un répertoire de travail par incident
+- **Git/GitHub** : la CLI `gh` doit être installée et authentifiée sur la machine hôte
+- **Jira** : intégration optionnelle pour le MVP, via API REST Atlassian si le ticket ID est fourni (sinon le rapport est juste stocké en local et ajouté à la PR)
+
+## 3. Périmètre fonctionnel du MVP
+
+### Inclus
+- Création et suivi d'incidents via UI
+- Pipeline complet d'agents : collecte → repro → fix → tests → PR → rapport
+- Une session persistante Claude par incident
+- Annulation manuelle d'une session
+- Q&A avec l'agent collecte si besoin de précisions
+- Historique des incidents avec statuts et métriques
+
+### Hors périmètre
+- Multi-utilisateurs, auth, rôles
+- Déploiement cloud ou conteneurisation de la solution elle-même
+- Intégration webhook Jira / Sentry / Datadog (déclenchement automatique)
+- Support de stacks autres que TS/Next/Nest/turborepo
+- Stratégie de repli si l'agent boucle indéfiniment (au-delà d'un timeout simple)
+- Replay de bugs depuis traces OpenTelemetry, dump de prod
+
+## 4. Architecture haut niveau
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Frontend (Streamlit ou FastAPI+HTMX)                     │
+│  - Création incident                                     │
+│  - Liste / détail / Q&A / annulation                     │
+└────────────────────────┬─────────────────────────────────┘
+                         │ HTTP/WebSocket
+┌────────────────────────▼─────────────────────────────────┐
+│ Backend Python (FastAPI)                                 │
+│  - REST API incidents                                    │
+│  - Queue async (asyncio + tasks dict)                    │
+│  - Persistance SQLite                                    │
+│  - Streaming events (logs agents) via WebSocket ou SSE   │
+└────────────────────────┬─────────────────────────────────┘
+                         │ pilote
+┌────────────────────────▼─────────────────────────────────┐
+│ Orchestrateur d'incident (1 par incident)                │
+│  - ClaudeSDKClient session persistante                   │
+│  - Définit les subagents (collecte, repro, fix, ...)     │
+│  - Hooks PreToolUse/PostToolUse → SQLite + WebSocket     │
+│  - Annulation via CancellationToken                      │
+└────────────────────────┬─────────────────────────────────┘
+                         │ tool use
+┌────────────────────────▼─────────────────────────────────┐
+│ Local execution                                          │
+│  - Workspace temporaire /tmp/healer/<incident_id>/       │
+│  - Clone repo + git worktree par incident                │
+│  - Docker engine (containers de l'env du client)         │
+│  - gh CLI (PR), git CLI (commits/push)                   │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Principes d'isolation
+- **Sandbox runtime Anthropic** : confine l'agent au répertoire `/tmp/healer/<incident_id>/` et aux hosts allowlist (api.anthropic.com, github.com, registry.npmjs.org, hub.docker.com…)
+- **Docker** : isole l'environnement applicatif du client (DB, services, app under test)
+- **Ports dynamiques** : tous les ports exposés par les containers sont alloués dynamiquement (laisser Docker assigner ou utiliser une lib Python comme `socket.bind(('', 0))` pour découvrir un port libre) et passés en variables d'env au container
+
+## 5. Modèle de données (SQLite)
+
+### Table `incidents`
+| Colonne | Type | Description |
+|---|---|---|
+| id | TEXT (UUID) PK | Identifiant unique |
+| created_at | TIMESTAMP | Date de création |
+| updated_at | TIMESTAMP | Dernière màj |
+| status | TEXT | `pending`, `collecting`, `reproducing`, `fixing`, `testing`, `pushing`, `reporting`, `done`, `failed`, `cancelled`, `awaiting_user` |
+| branch_name | TEXT | Nom de la branche cible (input user) |
+| repo_url | TEXT | URL du repo GitHub à cloner |
+| title | TEXT | Titre de l'incident |
+| description | TEXT | Description initiale |
+| jira_ticket_id | TEXT NULL | Préfixe pour conventional commits / PR |
+| pr_url | TEXT NULL | URL de la PR draft une fois créée |
+| confidence_score | REAL NULL | Score 0-1 calculé en fin de pipeline |
+| total_tokens_input | INTEGER | Cumul tokens input |
+| total_tokens_output | INTEGER | Cumul tokens output |
+| total_cost_usd | REAL | Coût estimé en USD |
+| started_at | TIMESTAMP NULL | Début du pipeline |
+| ended_at | TIMESTAMP NULL | Fin du pipeline |
+| workspace_path | TEXT | Chemin du workspace local |
+
+### Table `incident_attachments`
+| Colonne | Type | Description |
+|---|---|---|
+| id | INTEGER PK | |
+| incident_id | TEXT FK | |
+| filename | TEXT | Nom original |
+| stored_path | TEXT | Chemin local de stockage |
+| description | TEXT | Description fournie par l'user (ex: "logs prod du 12 mai") |
+| kind | TEXT | `log`, `dump`, `screenshot`, `trace`, `other` (libre champ texte) |
+
+### Table `agent_events`
+Trace fine pour debugging et UI.
+
+| Colonne | Type | Description |
+|---|---|---|
+| id | INTEGER PK | |
+| incident_id | TEXT FK | |
+| timestamp | TIMESTAMP | |
+| agent_name | TEXT | `collector`, `reproducer`, `fixer`, `tester`, `pr`, `reporter` ou `orchestrator` |
+| event_type | TEXT | `started`, `tool_use`, `tool_result`, `message`, `finished`, `failed`, `question_asked` |
+| payload | TEXT (JSON) | Détail de l'événement (tool name, args, result tronqué…) |
+| tokens_input | INTEGER NULL | |
+| tokens_output | INTEGER NULL | |
+
+### Table `incident_qa`
+Pour les questions de l'agent collecte à l'utilisateur.
+
+| Colonne | Type | Description |
+|---|---|---|
+| id | INTEGER PK | |
+| incident_id | TEXT FK | |
+| asked_at | TIMESTAMP | |
+| question | TEXT | |
+| answered_at | TIMESTAMP NULL | |
+| answer | TEXT NULL | |
+
+### Table `incident_reports`
+Le rapport final structuré.
+
+| Colonne | Type | Description |
+|---|---|---|
+| incident_id | TEXT PK FK | |
+| summary | TEXT | Synthèse exécutive |
+| root_cause | TEXT | Analyse de la root cause |
+| fix_description | TEXT | Ce qui a été modifié et pourquoi |
+| reproduction_steps | TEXT | Comment le bug a été reproduit |
+| validation_steps | TEXT | Comment le fix a été validé |
+| confidence_score | REAL | Score 0-1 |
+| confidence_rationale | TEXT | Justification du score |
+| markdown_full | TEXT | Version markdown complète pour la PR |
+
+## 6. Spécification des agents
+
+Tous les agents sont définis comme `AgentDefinition` dans l'options de l'orchestrateur principal. L'orchestrateur est un agent principal léger qui pilote la séquence.
+
+### Orchestrateur principal
+- **Modèle** : `claude-sonnet-4-5` (raisonnement de pilotage léger)
+- **Rôle** : décide quel subagent appeler à chaque étape, gère les transitions de statut, capture les erreurs
+- **Outils** : `Task` (pour invoquer les subagents), `Read` (sur les rapports intermédiaires)
+
+### Agent `collector`
+- **Modèle** : `claude-sonnet-4-5`
+- **Rôle** : lit tous les inputs (description, attachments), produit une **synthèse structurée** de l'incident, identifie les ambiguïtés et **pose des questions à l'utilisateur** via un custom tool `ask_user`
+- **Critère de sortie** : produit un JSON `{summary, hypothesized_area, repro_hints, open_questions: []}` et n'avance que si `open_questions` est vide
+- **Outils** : `Read`, `Grep`, custom tool `ask_user`
+- **Fin** : passe la synthèse à l'orchestrateur
+
+### Agent `reproducer`
+- **Modèle** : `claude-sonnet-4-5` (peut basculer en Opus si la repro échoue 2 fois)
+- **Rôle** :
+  1. Clone le repo dans `/tmp/healer/<incident_id>/repo` via `git clone`
+  2. Crée la branche cible (`branch_name` fournie par l'user)
+  3. Analyse la config du projet : `package.json`, `turbo.json`, `docker-compose*.yml`, `Dockerfile*`, `.env.example`, `README.md`
+  4. Construit ou réutilise un `docker-compose` pour spin l'env applicatif **avec ports dynamiques** (ne jamais utiliser de port fixe susceptible de conflit)
+  5. Tente de reproduire le bug en suivant les `repro_hints` du collector
+  6. Marque le résultat : `reproduced` / `partially_reproduced` / `not_reproduced`
+- **Impact sur confidence_score** :
+  - `reproduced` : pas d'impact négatif
+  - `partially_reproduced` : score plafonné à 0.6
+  - `not_reproduced` : score plafonné à 0.3, l'agent fix doit être prévenu et doit produire un fix défensif (commenté comme tel)
+- **Outils** : `Bash` (git, docker, curl), `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebFetch` (pour repro browser-based si pertinent)
+- **Note** : la reproduction browser via Playwright headless est un nice-to-have, à scoper en V2 si non trivial
+
+### Agent `fixer`
+- **Modèle** : `claude-opus-4-7` (raisonnement complexe sur du code)
+- **Rôle** :
+  1. Reçoit la synthèse, la repro, et l'accès au workspace
+  2. Analyse les conventions du projet : style, patterns, structure, lint config (`eslint`, `prettier`, `biome`)
+  3. Propose et applique un correctif minimal
+  4. Lance le linter et le formatter du projet
+  5. **Boucle avec le reproducer** : signale à l'orchestrateur que le fix est prêt, le reproducer relance l'env avec le nouveau code, vérifie que le bug ne se reproduit plus
+  6. Si le bug persiste : nouvelle itération (max 3 itérations fix↔repro avant abandon)
+- **Outils** : `Read`, `Edit`, `Write`, `Bash`, `Glob`, `Grep`, `Task` (pour invoquer le reproducer en validation)
+
+### Agent `tester`
+- **Modèle** : `claude-sonnet-4-5`
+- **Rôle** :
+  1. Identifie les tests existants couvrant la zone modifiée
+  2. Met à jour les tests existants si la sémantique a changé
+  3. **Ajoute un test qui aurait dû détecter le bug initial** (test rouge avant fix → vert après fix, idéalement validé en lançant le test sur le code pré-fix puis post-fix)
+  4. Lance la suite de tests complète et vérifie qu'elle passe
+- **Outils** : `Read`, `Edit`, `Write`, `Bash`, `Glob`, `Grep`
+
+### Agent `pr`
+- **Modèle** : `claude-haiku-4-5` (tâche essentiellement mécanique)
+- **Rôle** :
+  1. Analyse les 20 derniers commits sur la branche par défaut pour extraire le pattern (conventional commit, scopes utilisés, formulation)
+  2. Compose un commit message respectant : `<type>(<scope>): <JIRA-ID> <description>` ou `<type>(<scope>): <description>` si pas de Jira ID
+  3. `git add . && git commit && git push -u origin <branch_name>`
+  4. `gh pr create --draft` avec un titre suivant le même pattern
+- **Outils** : `Bash`, `Read`
+
+### Agent `reporter`
+- **Modèle** : `claude-sonnet-4-5`
+- **Rôle** :
+  1. Synthétise tout le déroulé de l'incident
+  2. Produit un rapport markdown structuré (cf. table `incident_reports`)
+  3. **Calcule le score de confiance** selon une rubrique (cf. section 7)
+  4. Met à jour la description de la PR draft avec ce rapport via `gh pr edit <pr_url> --body-file <report.md>`
+- **Outils** : `Read`, `Bash`, `Write`
+
+### Choix des modèles — récapitulatif
+
+| Agent | Modèle | Justification |
+|---|---|---|
+| Orchestrator | Sonnet 4.5 | Pilotage, peu de tokens, raisonnement modéré |
+| Collector | Sonnet 4.5 | Compréhension contexte + Q&A |
+| Reproducer | Sonnet 4.5 (fallback Opus) | Beaucoup de tool use, raisonnement moyen |
+| Fixer | Opus 4.7 | Cœur du raisonnement, complexe |
+| Tester | Sonnet 4.5 | Génération de code de test, modéré |
+| PR | Haiku 4.5 | Tâche mécanique, économique |
+| Reporter | Sonnet 4.5 | Rédaction structurée |
+
+**Prompt caching** activé sur le system prompt + définitions d'outils + contexte projet partagé entre subagents.
+
+## 7. Score de confiance
+
+Rubrique additive, normalisée à 0-1.
+
+| Critère | Pondération | Détail |
+|---|---|---|
+| Bug reproduit dans l'env de repro | 0.30 | binaire reproduced/partial/not |
+| Test ajouté qui échoue sur code pré-fix et passe sur code post-fix | 0.25 | binaire validé/non |
+| Suite de tests complète passe post-fix | 0.20 | binaire |
+| Linter et formatter passent | 0.10 | binaire |
+| Pas plus de 2 itérations fix↔repro nécessaires | 0.10 | bonus si direct |
+| Pas de fichiers hors du scope évident touchés (ex: pas de changement de dépendances majeures) | 0.05 | jugement du reporter |
+
+Le reporter justifie chaque points dans `confidence_rationale`. L'orchestrateur peut forcer un plafond (cf. impact reproducer).
+
+## 8. Workflow utilisateur
+
+### Cas nominal
+1. User crée un incident via UI (formulaire)
+2. Backend persiste l'incident, lance l'orchestrateur dans une asyncio task
+3. Collector synthétise → pas de questions → status passe à `reproducing`
+4. Reproducer clone, déploie, reproduit → status `fixing`
+5. Fixer corrige, valide avec reproducer → status `testing`
+6. Tester ajoute/met à jour les tests → status `pushing`
+7. PR agent commit, push, ouvre la PR draft → status `reporting`
+8. Reporter génère le rapport, met à jour la description de PR → status `done`
+9. UI affiche le détail final avec lien PR, rapport, métriques
+
+### Cas Q&A
+1. Collector identifie une ambiguïté → status `awaiting_user`
+2. Question stockée dans `incident_qa`
+3. UI affiche la question dans le détail de l'incident
+4. User répond via UI
+5. Backend transmet la réponse à la session via `ClaudeSDKClient.query(...)`
+6. Collector réévalue → soit autre question, soit avance
+
+### Cas annulation
+1. User clique "Annuler" dans l'UI
+2. Backend signale la cancellation à la task asyncio (via `asyncio.CancelledError` ou un `CancellationToken` partagé)
+3. La `ClaudeSDKClient` est fermée proprement (context manager)
+4. Containers Docker créés pour la repro sont stoppés et supprimés
+5. Workspace `/tmp/healer/<incident_id>/` est conservé pour inspection (purgé après 7 jours par un job de cleanup au démarrage du backend)
+6. Status passe à `cancelled`
+
+### Cas échec
+- Toute exception non rattrapée fait passer le status à `failed`
+- L'événement d'erreur est loggé dans `agent_events`
+- Le workspace est conservé
+- L'UI permet de voir la stack trace dans le détail
+
+## 9. UI
+
+Recommandation : **Streamlit** pour le MVP (rapidité de dev, suffisant pour les besoins). Alternative : FastAPI + petit front HTMX/Alpine si on veut plus de contrôle sur le WebSocket et l'ergonomie.
 
 ### Pages
 
-| Route | Description |
-|---|---|
-| `/` | Dashboard — list of all pipelines |
-| `/pipelines/new` | Create pipeline form |
-| `/pipelines/[id]` | Pipeline detail — integrations + run history |
-| `/pipelines/[id]/edit` | Edit pipeline configuration |
-| `/pipelines/[id]/runs/[runId]` | Run detail — real-time step execution view |
-| `/settings` | Global settings |
+**Page "Nouveau traitement"**
+- Champ `repo_url` (URL GitHub, validation regex)
+- Champ `branch_name` (texte, validation kebab-case)
+- Champ `title` (texte court)
+- Champ `description` (textarea)
+- Champ optionnel `jira_ticket_id` (ex: `PROJ-1234`)
+- Upload de fichiers (multi) avec, pour chaque fichier, un champ texte libre pour la description + un select (`log`, `dump`, `screenshot`, `trace`, `other`)
+- Bouton "Lancer le traitement"
 
-### Key UI Behaviors
+**Page "Historique"**
+- Liste paginée des incidents avec colonnes : titre, status (avec badge couleur), créé le, durée, score confiance, lien PR
+- Filtres : status, plage de dates
+- Tri par date desc par défaut
 
-- The dashboard provides a quick overview with status badges and a one-click trigger button per pipeline.
-- The pipeline detail page uses a tabbed or sectioned layout: one section for configuration, one for run history.
-- The run detail page displays steps as a vertical timeline, updating in real time. Each step can be expanded to show its full output.
-- Credential fields in the integration configuration forms are masked by default (password-type input) and support reveal-on-demand.
-- Destructive actions (delete pipeline, etc.) require a confirmation dialog.
-- Empty states (no pipelines, no runs) are informative and guide the user toward the next action.
+**Page "Détail incident"**
+- En-tête : titre, status, métadonnées
+- Timeline des `agent_events` (groupés par agent, ordre chrono) — vue collapsible
+- Métriques : durée totale, durée par agent, tokens input/output, coût estimé USD
+- Section Q&A si applicable : questions de l'agent + zone de réponse pour l'user
+- Section Rapport (visible si status `done`)
+- Bouton "Annuler" si status actif
+- Bouton "Ouvrir la PR" si disponible
 
----
+### Streaming
+Les `agent_events` sont émis en temps réel. Si Streamlit : polling toutes les 2s sur l'endpoint events. Si FastAPI custom : WebSocket ou SSE.
 
-## Agent Behavior Guidelines
+## 10. Structure du projet
 
-### LLM Integration
+```
+self-healer/
+├── pyproject.toml          # uv ou poetry, à toi de voir
+├── .env.example            # ANTHROPIC_API_KEY, GH_TOKEN, JIRA_*
+├── README.md
+├── self_healer/
+│   ├── __init__.py
+│   ├── main.py             # point d'entrée FastAPI
+│   ├── settings.py         # pydantic-settings
+│   ├── db.py               # SQLAlchemy ou aiosqlite, schémas
+│   ├── models.py           # pydantic models pour l'API
+│   ├── api/
+│   │   ├── incidents.py    # routes REST
+│   │   ├── events.py       # WebSocket/SSE
+│   │   └── qa.py           # endpoints Q&A
+│   ├── orchestrator/
+│   │   ├── runner.py       # boucle principale par incident
+│   │   ├── agents.py       # définitions AgentDefinition
+│   │   ├── prompts/        # markdown par agent
+│   │   │   ├── collector.md
+│   │   │   ├── reproducer.md
+│   │   │   ├── fixer.md
+│   │   │   ├── tester.md
+│   │   │   ├── pr.md
+│   │   │   └── reporter.md
+│   │   ├── tools/          # custom tools
+│   │   │   ├── ask_user.py
+│   │   │   └── ...
+│   │   ├── hooks.py        # PreToolUse, PostToolUse → DB + WS
+│   │   └── cost.py         # estimation coût
+│   ├── workspace.py        # gestion /tmp/healer
+│   ├── confidence.py       # calcul du score
+│   └── ui/
+│       └── streamlit_app.py
+└── tests/
+```
 
-Both agents are implemented as NestJS services that call the Anthropic API directly using the `@anthropic-ai/sdk` package. The model used is `claude-sonnet-4-6`. Each agent constructs its own prompt, sends a single request (or a multi-turn conversation if iterative reasoning is required), and parses the response into a structured output before passing it to the next step.
+## 11. Configuration
 
-The Anthropic API key is stored as an environment variable and is never exposed to the frontend.
+Fichier `.env.example` :
+```
+ANTHROPIC_API_KEY=
+GH_TOKEN=                  # ou bien gh CLI déjà loggé
+JIRA_BASE_URL=             # optionnel
+JIRA_EMAIL=                # optionnel
+JIRA_API_TOKEN=            # optionnel
+HEALER_WORKSPACE_ROOT=/tmp/healer
+HEALER_DB_PATH=./self_healer.db
+HEALER_MAX_FIX_REPRO_ITERATIONS=3
+HEALER_SESSION_TIMEOUT_MINUTES=30
+```
 
-### General
+## 12. Hooks et instrumentation
 
-Both agents (analysis and remediation) must operate within the context they are given and must not make assumptions about code they have not been provided. They must cite specific files and line numbers in their outputs.
+Hooks Agent SDK à brancher dans l'orchestrateur :
 
-### Analysis Agent
+- **`SessionStart`** : crée l'event `started` pour l'agent courant
+- **`PreToolUse`** : log l'intention (`tool_use`), permet de bloquer des outils dangereux (ex: `rm -rf /`, `git push --force`, opérations sur des chemins hors workspace)
+- **`PostToolUse`** : log le résultat (`tool_result`, tronqué à 2000 chars en DB)
+- **`UserPromptSubmit`** : utilisé pour les questions de l'agent collecte (custom tool `ask_user`)
+- **`Stop`** : finalise l'event `finished`, met à jour les métriques tokens
 
-- Must produce a structured, machine-readable report in addition to the human-readable ticket description.
-- Must clearly separate confirmed findings from hypotheses.
-- Must not propose fixes that involve changes to infrastructure, environment variables, or configuration files outside the repository.
+## 13. Sécurité et garde-fous
 
-### Remediation Agent
+- Validation stricte du `repo_url` : doit matcher un GitHub repo, refuser les URLs locales `file://` ou autres protocoles
+- Le sandbox runtime Anthropic restreint l'agent au workspace de l'incident
+- Hook `PreToolUse` refuse les bash commandes :
+  - `rm -rf` avec un chemin hors workspace
+  - `git push --force` (force-with-lease toléré)
+  - `docker system prune`, `docker volume rm` sur volumes non créés par l'incident
+  - `npm publish`, `gh release create`, autres opérations destructives
+- Les credentials (`GH_TOKEN`, `JIRA_*`, `ANTHROPIC_API_KEY`) ne sont jamais loggés dans `agent_events`. Les hooks doivent les masquer dans les payloads.
+- Timeout global de session configurable (défaut 30 min)
 
-- Must never force-push to protected branches.
-- Must never modify more files than a configurable maximum per run (default: 10 files in the MVP).
-- Must include tests for the fix if the repository contains an existing test suite and the fix is testable.
-- Must skip implementation and log the reason if the confidence level from the analysis report is "low".
-- All commits must follow conventional commit format.
+## 14. Critères d'acceptation MVP
 
----
+Le MVP est considéré comme validé si :
 
-## Error Handling
+1. Un incident peut être créé via UI avec attachments
+2. Le pipeline complet s'exécute sur un repo TS/Next.js de démo (à fournir) avec un bug volontaire de type "null check manquant"
+3. L'env Docker du repo démo est déployé sans conflit de port sur la machine
+4. Le fix produit passe les tests et le lint
+5. Une PR draft est ouverte sur GitHub avec un commit conforme à conventional commits
+6. Un rapport est généré et visible dans l'UI + dans la description de la PR
+7. L'annulation manuelle d'une session stoppe proprement les containers et la session Claude
+8. Le score de confiance est calculé et affiché
+9. Q&A fonctionne : l'agent peut poser une question, l'user peut y répondre via l'UI, le pipeline reprend
+10. La consommation de tokens et le coût estimé sont visibles par incident
 
-- If an integration is misconfigured (invalid credentials, unreachable service), the corresponding step fails with a clear error message indicating which integration failed and why.
-- If the Vercel log API returns no errors, the run completes with a "clean" status — this is not treated as an error.
-- If the GitHub push fails (e.g., due to branch protection rules), the step is marked as failed and the Linear ticket is updated with an explanation.
-- Agent failures (timeout, LLM error, unparseable output) cause the step to fail. The run is marked as partially failed if Step 4 succeeded before Step 5 or 6 failed.
+## 15. Points ouverts (à arbitrer pendant l'implémentation)
 
----
+- **Streamlit vs FastAPI+HTMX** : Streamlit recommandé pour la vitesse de MVP, mais l'expérience streaming est moins fluide. Décision à prendre dès le début.
+- **Reproduction browser-based** (Playwright) : reporté en V2 sauf si trivial à brancher
+- **Allowlist réseau du sandbox Anthropic** : liste précise à finaliser au premier run, partir d'une base permissive sur dev puis serrer
+- **Stratégie de purge** des workspaces : 7 jours par défaut, à ajuster selon usage disque
+- **Limite de taille des attachments** : suggéré 50 MB par fichier, 200 MB par incident
+- **Gestion des secrets dans les `.env` des repos clients** : pour le MVP, l'user pré-place un `.env.local` dans son workspace ou fournit des fixtures. Pas d'intégration vault.
+- **Modèle pour Opus** : valider que la version `claude-opus-4-7` est dispo via API au moment de l'implémentation (sinon fallback `claude-opus-4-6`)
 
-## Out of Scope for MVP
+## 16. Roadmap post-MVP (pour mémoire)
 
-The following features are explicitly excluded from the MVP and are documented here for future reference:
-
-- User authentication and multi-user access
-- Scheduled or event-driven pipeline triggers (cron, webhooks)
-- Support for providers other than Vercel, GitHub, Supabase, and Linear
-- Documentation integration (e.g., Notion, Confluence)
-- Notifications (email, Slack, etc.)
-- Pipeline versioning
-- Agent feedback loop (human approval before applying a fix)
-- White-label or multi-tenant support
-- Billing or usage metering
-
----
-
-## Technology Stack
-
-| Layer | Choice |
-|---|---|
-| Monorepo | Turborepo |
-| Package manager | pnpm |
-| Frontend framework | Next.js (App Router) |
-| Frontend language | TypeScript |
-| UI components | shadcn/ui |
-| CSS | Tailwind CSS |
-| Backend framework | NestJS |
-| Backend language | TypeScript |
-| Schema validation | Zod |
-| API layer | tRPC |
-| Database | Supabase (PostgreSQL) |
-| Local development | Docker + Docker Compose |
-| Deployment | Vercel (frontend + backend) |
-| LLM provider | Anthropic API (`claude-sonnet-4-6`) |
+- Webhook déclencheur (Sentry, Datadog, Jira)
+- Multi-stack (Python, Go, Rust)
+- Replay de traces OpenTelemetry pour repro avancée
+- Dashboard d'agrégation : MTTR, taux de fix automatique, top causes
+- Mode revue humaine obligatoire avant push pour les scores < 0.5
+- Déploiement managé (Anthropic Managed Agents ou self-hosted Fly/Modal)
