@@ -3,3 +3,20 @@
 .vscode
 *.swp
 *.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+
+# Env & runtime
+.env
+*.db
+*.db-journal
