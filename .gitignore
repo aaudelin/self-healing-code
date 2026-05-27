@@ -20,3 +20,6 @@ build/
 .env
 *.db
 *.db-journal
+
+# Comparison tracking (runtime state only; events.jsonl is committed on purpose)
+comparison/.current-phase
