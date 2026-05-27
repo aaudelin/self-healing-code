@@ -209,7 +209,7 @@ Tous les agents sont définis comme `AgentDefinition` dans l'options de l'orches
 - **Modèle** : `claude-haiku-4-5` (tâche essentiellement mécanique)
 - **Rôle** :
   1. Analyse les 20 derniers commits sur la branche par défaut pour extraire le pattern (conventional commit, scopes utilisés, formulation)
-  2. Compose un commit message respectant : `<type>(<scope>): <JIRA-ID> <description>` ou `<type>(<scope>): <description>` si pas de Jira ID
+  2. Compose un commit message respectant : `<JIRA-ID> - <type>: <description>` (ex. `JMIA-123 - fix: update authentication`), ou `<type>: <description>` si pas de Jira ID
   3. `git add . && git commit && git push -u origin <branch_name>`
   4. `gh pr create --draft` avec un titre suivant le même pattern
 - **Outils** : `Bash`, `Read`
