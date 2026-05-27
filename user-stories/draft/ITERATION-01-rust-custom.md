@@ -1,6 +1,6 @@
-# POC 2 — Backend Rust + boucle agent custom
+# Itération 1 — Version Rust + boucle agent custom
 
-> Implémente **le même contrat** que `POC-00-overview.md`, mais **sans SDK d'agent** : on réécrit à la main la boucle agentique (tool-use loop) directement sur l'**API Messages** d'Anthropic (`POST /v1/messages`). C'est le cœur de la comparaison avec le POC 1.
+> Implémente **le même contrat** que `ITERATION-01-overview.md`, mais **sans SDK d'agent** : on réécrit à la main la boucle agentique (tool-use loop) directement sur l'**API Messages** d'Anthropic (`POST /v1/messages`). C'est le cœur de la comparaison avec la version Python.
 
 ## 1. Stack
 - Rust (édition 2021+), runtime async **tokio**
@@ -14,7 +14,7 @@
 
 ## 2. Structure
 ```
-poc2-rust/
+backend-rust/
 ├── Cargo.toml
 ├── .env.example                 # ANTHROPIC_API_KEY, HEALER_MODEL, HEALER_PORT=8002, HEALER_WORKSPACE_ROOT
 ├── src/
@@ -26,13 +26,13 @@ poc2-rust/
 │   ├── anthropic.rs             # client API Messages : types + appel reqwest + (option) streaming
 │   └── agent/
 │       ├── runner.rs            # orchestre les étapes + pilote la boucle
-│       ├── loop.rs              # boucle tool-use : envoie messages → reçoit tool_use → exécute → tool_result → répète
+│       ├── agent_loop.rs        # boucle tool-use : messages → tool_use → exécution → tool_result → répète
 │       ├── tools.rs             # schémas JSON des tools + exécution (list/read/search/edit/write/submit_fix)
 │       └── prompt.rs            # system prompt du correcteur
 └── tests/
 ```
 
-## 3. La boucle agent custom (loop.rs) — cœur du POC
+## 3. La boucle agent custom (agent_loop.rs) — cœur de la version Rust
 1. Construire la requête initiale : `system` prompt + `messages` (1er user msg = description + contenu du log + arbo) + `tools` (schémas JSON).
 2. `POST https://api.anthropic.com/v1/messages` via reqwest (headers `x-api-key`, `anthropic-version`).
 3. Lire la réponse :
@@ -50,12 +50,12 @@ poc2-rust/
 - comptage d'usage, gestion d'erreurs typées.
 
 ## 4. Tools (tools.rs)
-Mêmes tools que POC 1, définis en **schémas JSON** envoyés à l'API :
+Mêmes tools que la version Python, définis en **schémas JSON** envoyés à l'API :
 - `list_files`, `read_file`, `search`, `edit_file` / `write_file`, `submit_fix`.
 - Chaque exécution valide que le chemin résolu reste sous `/tmp/healer/<job_id>/repo`.
 
 ## 5. Flux d'un job (runner.rs)
-Identique au POC 1 : `cloning` → boucle agent (`analyzing/editing`) → `committing` (message `"<JIRA-ID> - <type>: <desc>"`) → `opening_pr` (`git push` + `gh pr create --draft`) → `done`. Erreur → `failed` + `error` + `events`.
+Identique à la version Python : `cloning` → boucle agent (`analyzing/editing`) → `committing` (message `"<JIRA-ID> - <type>: <desc>"`) → `opening_pr` (`git push` + `gh pr create --draft`) → `done`. Erreur → `failed` + `error` + `events`.
 
 git/PR via `git_ops.rs` (déterministe) → garantit nom de branche et format de commit.
 
@@ -75,9 +75,9 @@ HEALER_JOB_TIMEOUT_SECONDS=600
 HEALER_MAX_AGENT_TURNS=25
 ```
 
-## 8. Critères d'acceptation POC 2
+## 8. Critères d'acceptation
 1. `GET /api/health` renvoie `backend=rust-custom`.
-2. **Même scénario** que POC 1 sur le **même repo de démo** → job `done`.
+2. **Même scénario** que la version Python sur le **même repo de démo** → job `done`.
 3. Branche poussée = `branch_name` exact.
 4. Commit `"<JIRA-ID> - <type>: <desc>"` (ex. `JMIA-123 - fix: update authentication`).
 5. PR draft ouverte, titre au même format, body = résumé + ticket.
@@ -86,7 +86,7 @@ HEALER_MAX_AGENT_TURNS=25
 8. Un chemin hors workspace est refusé par l'exécuteur de tools.
 
 ## 9. Points ouverts spécifiques
-- Streaming (`stream: true`, SSE) ou réponse complète ? → réponse complète suffit pour le POC.
+- Streaming (`stream: true`, SSE) ou réponse complète ? → réponse complète suffit pour l'itération.
 - Emprunter une crate communautaire pour les **types** de l'API Messages, ou tout définir en interne ? (rester custom sur la **boucle**).
 - Stratégie de retry/backoff et timeouts reqwest.
 - Robustesse du parsing des arguments de tools renvoyés par le modèle.

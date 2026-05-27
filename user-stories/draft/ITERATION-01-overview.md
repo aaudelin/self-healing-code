@@ -1,9 +1,9 @@
-# POC — Overview & cadrage commun
+# Itération 1 — Overview & cadrage commun
 
-> Itération 1. Objectif : valider, sur **un cas simple**, deux implémentations d'un même agent correcteur, derrière **un front unique**.
+> Première itération. Objectif : valider, sur **un cas simple**, deux implémentations d'un même agent correcteur, derrière **un front unique**. Les itérations suivantes viendront enrichir ces mêmes bases (features additionnelles).
 > Doc de référence amont : `MVP-01.md` (spec complète). Ici on **réduit volontairement** le périmètre et on **challenge** plusieurs choix de la spec (voir §2).
 
-## 1. Objectif des deux POC
+## 1. Objectif de l'itération
 
 Construire un agent qui, à partir de :
 
@@ -15,38 +15,36 @@ Construire un agent qui, à partir de :
 
 produit une **PR corrective** sur le repo : il analyse log + description + code, applique un correctif, puis ouvre une PR draft sur la branche fournie.
 
-Les deux POC implémentent **exactement le même comportement et le même contrat d'API**, mais diffèrent par le backend :
+Les deux versions implémentent **exactement le même comportement et le même contrat d'API**, mais diffèrent par le backend :
 
-| POC | Langage | Couche agent |
+| Version | Langage | Couche agent |
 |---|---|---|
-| **POC 1** | Python | **Claude Agent SDK** (batteries incluses : boucle agent, tools, hooks, usage) |
-| **POC 2** | Rust | **Implémentation custom** de la boucle agent directement sur l'**API Messages** d'Anthropic |
+| **Version Python** | Python | **Claude Agent SDK** (batteries incluses : boucle agent, tools, hooks, usage) |
+| **Version Rust** | Rust | **Implémentation custom** de la boucle agent directement sur l'**API Messages** d'Anthropic |
 
 Le but réel de l'itération est **comparatif** : mesurer effort de dev, contrôle, perf et DX du SDK Python vs une boucle agentique réécrite à la main en Rust (voir §8). Le front, identique, sert à exécuter le même scénario contre les deux backends via une simple config.
 
 ## 2. Ce qu'on garde / ce qu'on challenge vs `MVP-01.md`
 
-| Sujet MVP-01 | Décision POC | Raison |
+| Sujet MVP-01 | Décision itération 1 | Raison |
 |---|---|---|
 | Pipeline 7 agents (collector → reproducer → fixer → tester → pr → reporter) | **1 seul agent** correcteur | Cas simple ; le multi-agent n'apporte rien à l'itération 1 |
 | Reproduction Docker, ports dynamiques | **Supprimé** | Scope = édition + PR, pas d'exécution de l'app |
 | Tester / suite de tests / lint avant PR | **Hors scope** | Confirmé : édition + PR uniquement |
 | Score de confiance, rubrique | **Supprimé** | Pas de validation exécutée → non pertinent ici |
 | Q&A agent ↔ user | **Supprimé** | Cas simple, flux linéaire |
-| Persistance SQLite (5 tables) | **Store en mémoire** + fichiers sur disque | Suffisant pour un POC ; rien ne survit à un restart (assumé) |
-| Format commit `fix(scope): JIRA-ID desc` | **`JIRA-ID - type: desc`** (ex. `JMIA-123 - fix: update authentication`) | **La conversation prime** sur la spec. Divergence assumée. |
+| Persistance SQLite (5 tables) | **Store en mémoire** + fichiers sur disque | Suffisant pour cette itération ; rien ne survit à un restart (assumé) |
+| Format commit | **`JIRA-ID - type: desc`** (ex. `JMIA-123 - fix: update authentication`) | Format de référence. `MVP-01.md` a été mis à jour pour s'aligner. |
 | UI Streamlit | **Next.js** | Front strictement découplé du langage backend, donc réutilisable tel quel |
 | Sandbox runtime Anthropic | **Confinement applicatif simple** (tools fichiers limités au workspace) | Pas de Bash exposé à l'agent → surface réduite, sandbox lourd non nécessaire |
 
-### Décision de design à confirmer — qui fait les opérations git ?
+### Décision actée — qui fait les opérations git ?
 
-**Recommandation : le backend fait le git/PR de façon déterministe, l'agent ne fait que le raisonnement + les éditions de fichiers.**
+**Le backend fait le git/PR de façon déterministe ; l'agent ne fait que le raisonnement + les éditions de fichiers.**
 
-- Les exigences **dures** (nom de branche exact, préfixe ticket + conventional commit) ne doivent **pas** dépendre de la docilité du LLM → on les code en dur dans le backend.
+- Les exigences **dures** (nom de branche exact, préfixe ticket + conventional commit) ne dépendent **pas** de la docilité du LLM → codées en dur dans le backend.
 - L'agent renvoie une sortie structurée `{ commit_type, short_description, summary }` ; le backend construit le message de commit `"<JIRA-ID> - <type>: <short_description>"`, commit, push et `gh pr create`.
-- Avantage bonus : **parité** plus simple entre Python et Rust (la valeur comparée reste la boucle agentique elle-même, pas le plumbing git).
-
-Alternative (façon MVP-01) : l'agent fait git/PR via un tool Bash. Plus « pur agent » mais moins fiable sur les contraintes dures. → **à trancher avant implémentation.**
+- Bonus : **parité** plus simple entre Python et Rust (la valeur comparée reste la boucle agentique elle-même, pas le plumbing git).
 
 ## 3. Périmètre
 
@@ -76,7 +74,7 @@ Alternative (façon MVP-01) : l'agent fait git/PR via un tool Bash. Plus « pur 
    - `branch_name` (validation kebab-case)
    - `jira_ticket_id` (ex. `JMIA-123`)
    - `description` (textarea)
-   - `log_file` (upload `.txt`/`.log`, ≤ 5 MB)
+   - `log_file` (upload `.txt`/`.log`, ≤ 5 MB, **optionnel**)
    - bouton « Lancer »
 2. **Suivi du job** — après `POST /api/jobs`, le front poll `GET /api/jobs/{id}` toutes les ~2s :
    - statut + étape courante (badge)
@@ -97,7 +95,7 @@ Base path : `/api`. Réponses JSON, CORS ouvert en local.
 ```
 
 ### `POST /api/jobs`  (multipart/form-data)
-Champs : `repo_url`, `branch_name`, `jira_ticket_id`, `description` (requis), `log_file` (fichier, optionnel mais attendu).
+Champs : `repo_url`, `branch_name`, `jira_ticket_id`, `description` (requis), `log_file` (fichier, **optionnel** — on peut lancer avec la seule description).
 → `202`
 ```json
 { "job_id": "f3c1...", "status": "queued" }
@@ -147,7 +145,7 @@ Liste des jobs de la session (mêmes objets, sans le détail des `events`).
 5. **opening_pr** → `git push -u origin <branch_name>` puis `gh pr create --draft` (titre = message de commit, body = `summary` + `Ticket: <JIRA-ID>`).
 6. **done** → renvoie `pr_url`, `commit_message`, `summary`.
 
-### Surface d'outils exposée à l'agent (identique POC1 / POC2)
+### Surface d'outils exposée à l'agent (identique aux deux versions)
 - `list_files(path?, glob?)`
 - `read_file(path)`
 - `search(query)` (grep)
@@ -161,7 +159,7 @@ Liste des jobs de la session (mêmes objets, sans le détail des `events`).
 - Bascule possible `claude-opus-4-7` pour les correctifs complexes.
 - À vérifier au 1er run : disponibilité des IDs de modèle via l'API.
 
-## 7. Sécurité & garde-fous (minimal POC)
+## 7. Sécurité & garde-fous (minimal pour cette itération)
 - Validation stricte `repo_url` (GitHub https uniquement ; refus `file://`, ssh, autres hôtes).
 - Tools fichiers bornés au workspace (anti path traversal).
 - `gh`/`git` supposés authentifiés sur la machine ; tokens jamais loggés dans `events`.
@@ -169,7 +167,7 @@ Liste des jobs de la session (mêmes objets, sans le détail des `events`).
 
 ## 8. Critères de comparaison (à remplir après implémentation)
 
-| Dimension | POC 1 (Python + SDK) | POC 2 (Rust custom) |
+| Dimension | Version Python (SDK) | Version Rust (custom) |
 |---|---|---|
 | LOC / effort pour atteindre la parité | | |
 | Latence bout-en-bout (même job) | | |
@@ -180,7 +178,5 @@ Liste des jobs de la session (mêmes objets, sans le détail des `events`).
 | Developer experience | | |
 
 ## 9. Points ouverts
-- **Git/PR déterministe (backend) vs via l'agent** → cf. §2, à trancher.
-- `log_file` requis ou optionnel ? (proposé : optionnel)
-- Faut-il un endpoint `GET /api/jobs` (historique) ou suivi mono-job suffisant pour l'itération 1 ?
-- Streaming temps réel (SSE) plus tard, ou polling 2s suffit pour le POC ? (proposé : polling)
+- Faut-il un endpoint `GET /api/jobs` (historique) ou suivi mono-job suffisant pour cette itération ?
+- Streaming temps réel (SSE) plus tard, ou polling 2s suffit ? (proposé : polling)

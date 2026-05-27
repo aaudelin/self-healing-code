@@ -1,6 +1,6 @@
-# POC 1 — Backend Python + Claude Agent SDK
+# Itération 1 — Version Python + Claude Agent SDK
 
-> Implémente le contrat commun de `POC-00-overview.md`. Ici, on s'appuie au maximum sur le **Claude Agent SDK (Python)** : boucle agent, exécution des tools, hooks et comptage d'usage sont fournis par le SDK.
+> Implémente le contrat commun de `ITERATION-01-overview.md`. Ici, on s'appuie au maximum sur le **Claude Agent SDK (Python)** : boucle agent, exécution des tools, hooks et comptage d'usage sont fournis par le SDK.
 
 ## 1. Stack
 - Python 3.11+
@@ -13,7 +13,7 @@
 
 ## 2. Structure
 ```
-poc1-python/
+backend-python/
 ├── pyproject.toml
 ├── .env.example                 # ANTHROPIC_API_KEY, HEALER_MODEL, HEALER_PORT=8001, HEALER_WORKSPACE_ROOT
 ├── app/
@@ -35,7 +35,7 @@ poc1-python/
 - **Tools fichiers** : built-in `Read`, `Glob`, `Grep`, `Edit`, `Write` du SDK, restreints au workspace.
 - **Tool de sortie** : custom tool `submit_fix(commit_type, short_description, summary)` qui clôt la boucle avec la sortie structurée.
 - **System prompt** : rôle « correcteur », reçoit description + contenu du log + arbo du repo ; consigne de produire un **correctif minimal** puis d'appeler `submit_fix`.
-- **Pas de Bash exposé** : git/PR faits par `git_ops.py` (cf. décision §2 de l'overview).
+- **Pas de Bash exposé** : git/PR faits par `git_ops.py` (cf. décision actée dans l'overview §2).
 - **Hooks** :
   - `PreToolUse` : bloque tout accès fichier hors `/tmp/healer/<job_id>/repo` ; masque d'éventuels secrets.
   - `PostToolUse` / messages : alimente `events` (niveau `tool`) du job.
@@ -65,7 +65,7 @@ HEALER_WORKSPACE_ROOT=/tmp/healer
 HEALER_JOB_TIMEOUT_SECONDS=600
 ```
 
-## 7. Critères d'acceptation POC 1
+## 7. Critères d'acceptation
 1. `GET /api/health` renvoie `backend=python-sdk`.
 2. Sur un repo de démo avec un bug simple (ex. null check manquant), un job va jusqu'à `done`.
 3. La branche poussée porte **exactement** `branch_name`.
@@ -75,6 +75,6 @@ HEALER_JOB_TIMEOUT_SECONDS=600
 7. Un chemin hors workspace est refusé par le hook `PreToolUse`.
 
 ## 8. Points ouverts spécifiques
-- `ClaudeSDKClient` (session persistante) vs `query()` one-shot — au plus simple pour le POC.
+- `ClaudeSDKClient` (session persistante) vs `query()` one-shot — au plus simple pour l'itération.
 - Récupération fine de l'usage tokens selon la version du SDK.
 - Forme exacte de la sortie : custom tool `submit_fix` vs parsing du dernier message structuré.
